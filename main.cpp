@@ -1,24 +1,10 @@
 #include <iostream>
 #include <map>
+#include "pickProbability.h"
 
-using namespace std;
-
-enum AwardType
-{
-    Credit_500,
-    Credit_50,
-    FreeGames_10,
-    FreeGames_5,
-    ExtraPics_2,
-    ExtraPics_1,
-    Blank,
-    Stopper
-};
-
-typedef map<AwardType, int> Picks;
 int main()
 {
-    Picks input = {
+    Picks inputPicks = {
         {Credit_500, 1},
         {Credit_50, 2},
         {FreeGames_10, 1},
@@ -28,6 +14,9 @@ int main()
         {Blank, 5},
         {Stopper, 1},
     };
+
+    double probability = getPickProbability(inputPicks, 1, Credit_500);
+    cout << probability << endl;
 
     return 0;
 }
@@ -73,10 +62,20 @@ Picks &reduceMapAward(Picks &picksMap, AwardType award)
     return picksMap;
 }
 
+int awardCount(const Picks &picksMap, AwardType award)
+{
+    int count = 0;
+    if (picksMap.count(award) > 0)
+    {
+        count = picksMap.at(award);
+    }
+    return count;
+}
+
 double getPickProbability(Picks picksMap, int remainingPicks, AwardType pickToFind)
 {
     double probability = 0.0;
-    int targetPickAwards = picksMap.count(pickToFind);
+    int targetPickAwards = awardCount(picksMap, pickToFind);
     int totalPickAwards = numberOfRemainingAwards(picksMap);
     if (remainingPicks == 0 || targetPickAwards == 0)
     {
@@ -84,19 +83,15 @@ double getPickProbability(Picks picksMap, int remainingPicks, AwardType pickToFi
     }
     if (remainingPicks == 1)
     {
-        if (numberOfExtraPicAwards(picksMap) == 0)
-        {
-            probability = targetPickAwards / totalPickAwards;
-            return probability;
-        }
+        probability += double(targetPickAwards) / totalPickAwards;
 
-        if (picksMap.count(ExtraPics_1) > 0)
+        if (awardCount(picksMap, ExtraPics_1) > 0)
         {
             reduceMapAward(picksMap, ExtraPics_1);
             probability += getPickProbability(picksMap, 1, pickToFind);
             incrementMapAward(picksMap, ExtraPics_1);
         }
-        if (picksMap.count(ExtraPics_2) > 0)
+        if (awardCount(picksMap, ExtraPics_2) > 0)
         {
             reduceMapAward(picksMap, ExtraPics_2);
             probability += getPickProbability(picksMap, 2, pickToFind);
@@ -105,6 +100,28 @@ double getPickProbability(Picks picksMap, int remainingPicks, AwardType pickToFi
         return probability;
     }
 
-    
+    // Probability of pick found at stage step - 1   +
+    probability += getPickProbability(picksMap, remainingPicks - 1, pickToFind);
+
+    // Probability of finding award at current stage without Stopper +
+    double probCurrentStep = targetPickAwards / double(totalPickAwards - remainingPicks);
+    for (int i = 1; i < remainingPicks; i++)
+    {
+        probCurrentStep += 1.0 / double(totalPickAwards - targetPickAwards - i);
+    }
+    probability += probCurrentStep;
+
+    // Probability of finding ExtraPic_1 and then finding the award +
+    double probPreviousExtraPic_1 = getPickProbability(picksMap, remainingPicks - 1, ExtraPics_1);
+    reduceMapAward(picksMap, ExtraPics_1);
+    probability += probPreviousExtraPic_1 * getPickProbability(picksMap, remainingPicks, pickToFind);
+    incrementMapAward(picksMap, ExtraPics_1);
+
+    // Probability of finding ExtraPic_2 and then finding the award
+    double probPreviousExtraPic_2 = getPickProbability(picksMap, remainingPicks - 1, ExtraPics_1);
+    reduceMapAward(picksMap, ExtraPics_2);
+    probability += probPreviousExtraPic_2 * getPickProbability(picksMap, remainingPicks + 1, pickToFind);
+    incrementMapAward(picksMap, ExtraPics_2);
+
     return probability;
 }
