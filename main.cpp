@@ -2,6 +2,15 @@
 #include <map>
 #include "pickProbability.h"
 
+string const awardName[] = {"Credit_500",
+                            "Credit_50",
+                            "FreeGames_10",
+                            "FreeGames_5",
+                            "ExtraPics_2",
+                            "ExtraPics_1",
+                            "Blank",
+                            "Stopper"};
+
 int main()
 {
     Picks inputPicks = {
@@ -72,8 +81,20 @@ int awardCount(const Picks &picksMap, AwardType award)
     return count;
 }
 
+void printPicksMap(const Picks &picksMap)
+{
+    cout << "{";
+    for (auto it = picksMap.begin(); it != picksMap.end(); it++)
+    {
+        cout << "{" << awardName[it->first] << ": " << it->second << "}";
+    }
+    cout << "}" << endl;
+}
+
 double getPickProbability(Picks picksMap, int remainingPicks, AwardType pickToFind)
 {
+    printPicksMap(picksMap);
+    cout << "remainingPicks: " << remainingPicks << " picsToFind: " << pickToFind << endl;
     double probability = 0.0;
     int targetPickAwards = awardCount(picksMap, pickToFind);
     int totalPickAwards = numberOfRemainingAwards(picksMap);
@@ -104,11 +125,14 @@ double getPickProbability(Picks picksMap, int remainingPicks, AwardType pickToFi
     probability += getPickProbability(picksMap, remainingPicks - 1, pickToFind);
 
     // Probability of finding award at current stage without Stopper +
-    double probCurrentStep = targetPickAwards / double(totalPickAwards - remainingPicks);
+    double probCurrentStep = 0.0;
     for (int i = 1; i < remainingPicks; i++)
     {
-        probCurrentStep += 1.0 / double(totalPickAwards - targetPickAwards - i);
+        int denominator = totalPickAwards - targetPickAwards - i;
+        cout << 1 << "/" << denominator << " * ";
+        probCurrentStep += 1.0 / double(denominator);
     }
+    probCurrentStep *= targetPickAwards / double(totalPickAwards - remainingPicks);
     probability += probCurrentStep;
 
     // Probability of finding ExtraPic_1 and then finding the award +
